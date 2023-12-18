@@ -56,7 +56,7 @@
   
 + `v= 2` -> verbose parameter of model.fit() (2= 1-line print statement) 
   
-
+  Return dtype -> `None`
 ## Notes
 
     This class is configured for numerical data, therefore reshaping of images will be required.
