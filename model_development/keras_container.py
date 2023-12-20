@@ -4,17 +4,23 @@ from tensorflow import keras
 from keras import layers
 from keras.models import Sequential
 
-from pathlib import Path
 import numpy as np
 
-class KERAS_container():
-    def __init__(self, data_path:Path, img_size:tuple) -> None:
+from pathlib import Path
+from utils.logger import Logger
 
+class KERAS_container(Logger):
+    def __init__(self, data_path:Path, img_size:tuple) -> None:
+        self.id = id(self)
+        
+        super().__init__(class_name='KERAS_container', instance_id = self.id)
+        
         self.data_path = data_path # Path to image data
         self.img_size = img_size # Image size in pixels
                 
         self.split = self.data_split(data_dir=self.data_path, img_size=img_size) # Train/Test split in tuple
         
+    
     # Train/Test splitter
     def data_split(self, data_dir:Path, img_size:tuple, test_split:float= 0.2, batch_size:int= 64, seed:int= np.random.randint(10000000, 99999999)):
         train = keras.utils.image_dataset_from_directory(
@@ -46,6 +52,7 @@ class KERAS_container():
         Omitting shuffle while training results are suboptimal is ill-advised. Seeds should be utilized to reproduce a pre-optimized training
         config without having to move a trained model in memory.
         '''
+        self.log(f"Data Loaded with seed: {seed}")
         print(f"Seed: {seed}")
         return (train, test)
     
@@ -86,6 +93,7 @@ class KERAS_container():
 
         match conf:
             case 'y':
+                self.log(f"Training initiated")
                 self.history = self.model.fit(
                     ds[0],
                     validation_data=ds[1],
@@ -94,10 +102,13 @@ class KERAS_container():
             case 'n':
                 print('Training aborted.')
         
+        self.log(f"Training completed. Training summary: \n{self.get_history()}\n")
     # Predictor
     def predict(self):
         if self.history:
+            self.log("Prediction initiated")
             self.predictions = self.model.predict(self.split[1])
+            self.log("Prediction completed.")
         else:
             raise ValueError("Untrained Model: Initiate model training through model_train() before running predictions.")
     
