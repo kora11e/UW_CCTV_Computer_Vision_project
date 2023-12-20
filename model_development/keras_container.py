@@ -1,5 +1,9 @@
 import tensorflow as tf
 from tensorflow import keras
+
+from keras import layers
+from keras.models import Sequential
+
 from pathlib import Path
 import numpy as np
 
@@ -33,33 +37,37 @@ class KERAS_container():
         self.class_names = train.class_names # list of classification categories (retrieved from database directory names)
         
         # DataSet performance optimizations and train set shuffling
-        train = train.cache().shuffle(1000).prefetch(buffer_size=tf.data.AUTOTUNE)
+        train = train.cache().shuffle(1000, seed=seed).prefetch(buffer_size=tf.data.AUTOTUNE)
         test = test.cache().prefetch(buffer_size=tf.data.AUTOTUNE)
         
-        # Seed for result repeatability, logging seeds allows keeping shuffle as the only random variable if need be.
+        '''Seed logging:
+        Seed printed for result repeatability. Logging and manually setting a seed will omit random variables if need be.
+        For perfect reproducability, tf.data.Dataset.shuffle() also utilizes the same seed as keras.utils.image_dataset_from_directory methods. 
+        Omitting shuffle while training results are suboptimal is ill-advised. Seeds should be utilized to reproduce a pre-optimized training
+        config without having to move a trained model in memory.
+        '''
         print(f"Seed: {seed}")
-        
         return (train, test)
     
     # Training initializer
     def train_model(self, epoch=1000, metrics:list=[]):
         
         ds = self.split
-        self.model = keras.models.Sequential([ # Layers are in default config, modifications may be applied as project moves forward
-                                            keras.layers.Rescaling(1./255, input_shape=(self.img_size[0], self.img_size[1], 3)),
-                                            keras.layers.Conv2D(16, 3, padding='same', activation='softmax'),
-                                            keras.layers.MaxPooling2D(),
-                                            keras.layers.Conv2D(32, 3, padding='same', activation='softmax'),
-                                            keras.layers.MaxPooling2D(),
-                                            keras.layers.Conv2D(64, 3, padding='same', activation='softmax'),
-                                            keras.layers.MaxPooling2D(),
-                                            keras.layers.Flatten(),
-                                            keras.layers.Dense(128, activation='softmax'),
-                                            keras.layers.Dense(len(self.class_names))
-                                            ])
+        self.model = Sequential([ # Layers are in default config, modifications may be applied as project moves forward
+                                layers.Rescaling(1./255, input_shape=(self.img_size[0], self.img_size[1], 3)),
+                                layers.Conv2D(16, 3, padding='same', activation='softmax'),
+                                layers.MaxPooling2D(),
+                                layers.Conv2D(32, 3, padding='same', activation='softmax'),
+                                layers.MaxPooling2D(),
+                                layers.Conv2D(64, 3, padding='same', activation='softmax'),
+                                layers.MaxPooling2D(),
+                                layers.Flatten(),                                    
+                                layers.Dense(128, activation='softmax'),
+                                layers.Dense(len(self.class_names))
+                                ])
         compile_params = {
                         'optimizer': 'SDG',
-                        'loss': tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True)
+                        'loss': keras.losses.SparseCategoricalCrossentropy(from_logits=True)
                         }
         if metrics:
             compile_params['metrics'] = metrics
