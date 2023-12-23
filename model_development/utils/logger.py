@@ -10,8 +10,7 @@ class Logger:
         
     def log(self, content):
         logs_directory = Path(self.log_directory)
-        current_time = datetime.datetime.now().strftime("%-H%M")
-        
+        current_time = datetime.datetime.now().strftime("%-H:%M.%S")
         log_file_path = logs_directory / f"logs_{datetime.date.today().strftime('%-d-%m-%Y')}.txt"
         
         logs_directory.mkdir(parents=True, exist_ok=True)

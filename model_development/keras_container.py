@@ -10,15 +10,15 @@ from pathlib import Path
 from utils.logger import Logger
 
 class KERAS_container(Logger):
-    def __init__(self, data_path:Path, img_size:tuple) -> None:
+    def __init__(self, data_path:Path, img_shape:tuple) -> None:
         self.id = id(self)
         
         super().__init__(class_name='KERAS_container', instance_id = self.id)
         
         self.data_path = data_path # Path to image data
-        self.img_size = img_size # Image size in pixels
+        self.img_shape = img_shape # Image size in pixels
                 
-        self.split = self.data_split(data_dir=self.data_path, img_size=img_size) # Train/Test split in tuple
+        self.split = self.data_split(data_dir=self.data_path, img_size=(img_shape[0], img_shape[1])) # Train/Test split in tuple
         
     
     # Train/Test splitter
@@ -36,7 +36,7 @@ class KERAS_container(Logger):
                                                         directory=data_dir,
                                                         validation_split=test_split,
                                                         subset='validation',
-                                                        seed=seed,
+                                                        seed=seed - np.random.randint(1000000, 9999999),
                                                         image_size=img_size,
                                                         batch_size=batch_size
                                                         )
@@ -61,20 +61,20 @@ class KERAS_container(Logger):
         
         ds = self.split
         self.model = Sequential([ # Layers are in default config, modifications may be applied as project moves forward
-                                layers.Rescaling(1./255, input_shape=(self.img_size[0], self.img_size[1], 3)),
-                                layers.Conv2D(16, 3, padding='same', activation='softmax'),
+                                layers.Rescaling(1./255, input_shape=self.img_shape),
+                                layers.Conv2D(16, 3, padding='same', activation='relu'),
                                 layers.MaxPooling2D(),
-                                layers.Conv2D(32, 3, padding='same', activation='softmax'),
+                                layers.Conv2D(32, 3, padding='same', activation='relu'),
                                 layers.MaxPooling2D(),
-                                layers.Conv2D(64, 3, padding='same', activation='softmax'),
+                                layers.Conv2D(64, 3, padding='same', activation='relu'),
                                 layers.MaxPooling2D(),
                                 layers.Flatten(),                                    
                                 layers.Dense(128, activation='softmax'),
-                                layers.Dense(len(self.class_names))
+                                layers.Dense(len(self.class_names)) # Output layer
                                 ])
         compile_params = {
-                        'optimizer': 'SDG',
-                        'loss': keras.losses.SparseCategoricalCrossentropy(from_logits=True)
+                        'optimizer': 'Adam',
+                        'loss': keras.losses.SparseCategoricalCrossentropy()
                         }
         if metrics:
             compile_params['metrics'] = metrics
@@ -85,21 +85,21 @@ class KERAS_container(Logger):
         print(self.model.summary())
        
         while True: # User confirmation to avoid accidential compute time usage
-            conf = input('Confirm training initiation (y/n): ')
-            if conf in ('y', 'n'):
+            conf = input('Confirm training initiation (y/n): ').lower()
+            if conf in ('y', 'n', 'yes', 'no'):
                 break
             else:
                 print("Invalid input. Please enter 'y' or 'n'.")
 
         match conf:
-            case 'y':
+            case 'y', 'yes':
                 self.log(f"Training initiated")
                 self.history = self.model.fit(
                     ds[0],
                     validation_data=ds[1],
                     epochs=epoch
                 )
-            case 'n':
+            case 'n', 'no':
                 print('Training aborted.')
         
         self.log(f"Training completed. Training summary: \n{self.get_history()}\n")
@@ -113,9 +113,6 @@ class KERAS_container(Logger):
             raise ValueError("Untrained Model: Initiate model training through model_train() before running predictions.")
     
     # Getter methods    
-    def get_history(self):
-        return self.history
-    
-    def get_pred(self):
-        return self.predictions
+    get_history = lambda self: self.history.history
+    get_preds = lambda self: self.predictions
         
